@@ -1,0 +1,432 @@
+<html>
+
+<head>
+
+<style type="text/css">
+ul#nav {margin: 0 0 0 550px;}
+ul.drop a { display:block; color: #fff; font-family: Verdana; font-size: 14px; text-decoration: none;}
+ul.drop, ul.drop li, ul.drop ul { list-style: none; margin: 0; padding: 0; border: 1px solid #fff; background: #555; color: #fff;}
+ul.drop { position: relative; z-index: 597; float: left; }
+ul.drop li { float: left; line-height: 1.3em; vertical-align: middle; zoom: 1; padding: 0px 10px; }
+ul.drop li.hover, ul.drop li:hover { position: relative; z-index: 599; cursor: default; background: #1e7c9a; }
+ul.drop ul { visibility: hidden; position: absolute; top: 100%; left: 0; z-index: 598; width: 195px; background: #555; border: 1px solid #fff; }
+ul.drop ul li { float: none; }
+ul.drop ul ul { top: -2px; left: 100%; }
+ul.drop li:hover > ul { visibility: visible }
+</style>
+
+<script type="text/javascript">
+
+var TimeOut         = 300;
+var currentLayer    = null;
+var currentitem     = null;
+var currentLayerNum = 0;
+var noClose         = 0;
+var closeTimer      = null;
+
+function mopen(n) {
+  var l  = document.getElementById("menu"+n);
+  var mm = document.getElementById("mmenu"+n);
+	
+  if(l) {
+    mcancelclosetime();
+    l.style.visibility='visible';
+    if(currentLayer && (currentLayerNum != n))
+      currentLayer.style.visibility='hidden';
+    currentLayer = l;
+    currentitem = mm;
+    currentLayerNum = n;			
+  } 
+  else if(currentLayer) {
+    currentLayer.style.visibility='hidden';
+    currentLayerNum = 0;
+    currentitem = null;
+    currentLayer = null;
+  }
+}
+
+function mclosetime() {
+  closeTimer = window.setTimeout(mclose, TimeOut);
+}
+
+function mcancelclosetime() {
+  if(closeTimer) {
+    window.clearTimeout(closeTimer);
+    closeTimer = null;
+  }
+}
+
+function mclose() {
+  if(currentLayer && noClose!=1)   {
+    currentLayer.style.visibility='hidden';
+    currentLayerNum = 0;
+    currentLayer = null;
+    currentitem = null;
+  } else {
+    noClose = 0;
+  }
+  currentLayer = null;
+  currentitem = null;
+}
+
+document.onclick = mclose; 
+
+function httpRequest(cmd, method)
+{
+   var request = null;   
+   request = new XMLHttpRequest();
+   if (method == 'GET'){
+      request.open('GET', cmd, false);
+      request.send(null);
+   }
+   else if (method == 'PUT'){
+      request.open('PUT', cmd, false);
+      request.send(null);
+   }
+   else{
+      return('');
+   }
+
+   return(request.responseText);
+}
+
+function command(cmd, method){
+   var command_text = document.getElementById("command_text_area");
+   var json_text    = document.getElementById("json_text_area");
+   var str = "";
+   
+   command_text.innerHTML = cmd;
+   var reply = httpRequest(cmd, method);
+
+   json_text.innerHTML = reply;
+
+   /* Parse JSON string */
+   var obj = eval('(' + reply + ')');
+
+   if (obj.data.image.format == 'jpeg/base64'){
+      var img = document.getElementById("image_area");
+      img.src = 'data:image/jpeg;base64,' + obj.data.image.data; 
+      img.style.display='';
+   }
+}
+
+// Image functions
+var live;
+function toggleLiveImage(el) {
+    var tag = el.innerHTML;
+    if (tag == "Start streaming liveimages (VZONE 1)") {
+        live = setInterval(function(){command('spc/image/1', 'GET')}, 1000);
+        el.innerHTML = "Stop streaming liveimages (VZONE 1)";
+    }
+    else {
+        clearInterval(live);
+        el.innerHTML = "Start streaming liveimages (VZONE 1)";
+    }
+}
+
+var saved;
+var seq_nr;
+function getSavedImage() {
+   seq_nr = -16;
+   saved = setInterval(function() 
+     {
+       if (seq_nr == 0) seq_nr = 1;
+       
+       if (seq_nr <= 16) {
+           document.getElementById("sequence_number").innerHTML = 'Sequence number: ' + seq_nr;
+           document.getElementById("image_saved_button").disabled = true;
+           command('spc/image/1/' + seq_nr, 'GET');
+       } 
+       else{
+           document.getElementById("sequence_number").innerHTML = 'Sequence finished';
+           document.getElementById("image_saved_button").disabled = false;
+           clearInterval(saved);
+       }
+       seq_nr++;
+     }, 1000);
+}
+
+// WebSockets functions
+var writeToScreen = function(message) {
+    document.getElementById('websocket_area').innerHTML = message;
+};
+
+var websocket;
+
+function ws_connect(){
+   var encrypt_flag = document.getElementById("ws_encrypt_flag").checked;
+   var username = document.getElementById("ws_username").value;
+   var password = document.getElementById("ws_password").value;
+   var auth = '';
+   var protocol = '';
+   if (username.length > 0 && password.length > 0){
+      auth = '?username=' + username + '&password=' + password;
+   }
+   else{
+      auth = '';
+   }
+   if (encrypt_flag){
+      protocol = 'wss';
+   }
+   else{
+      protocol = 'ws';
+   }
+   var url = protocol + '://' + window.location.host + '/ws/spc' + auth;
+//   writeToScreen(url);
+   websocket = new WebSocket(url);
+   websocket.onopen = function(ev) {
+      writeToScreen('CONNECTED');
+      document.getElementById('connect_button').innerHTML = 'Disconnect';
+   };
+   websocket.onclose = function(ev) {
+      writeToScreen('DISCONNECTED');
+      document.getElementById('connect_button').innerHTML = 'Connect';
+   };
+   websocket.onmessage = function(ev) {
+      writeToScreen(ev.data);
+   };
+   websocket.onerror = function(ev) {
+      writeToScreen('<span style="color: red; ">ERROR: </span> ' + ev.data);
+    };
+};
+
+function toggleConnection(el) {
+    var tag=el.innerHTML;
+    if (tag == "Connect") {
+        ws_connect();
+    }
+    else {
+        websocket.close();
+    }
+}
+
+
+</script>
+
+</head>
+
+<body>
+<h1>Testpanel - Lundix IT SPC Web Gateway</h1>
+<ul id="nav" class="drop">
+  <li>Panel
+    <ul>
+      <li><a href="#" onclick="command('spc/panel', 'GET')">Basic Panel Info</a></li>
+      <li><a href="#" onclick="command('spc/system', 'GET')">System Info</a></li>
+      <li><a href="#" onclick="command('spc/psu', 'GET')">Power Supply Unit</a></li>
+      <li><a href="#" onclick="command('spc/alert', 'GET')">System Alerts</a></li>
+      <li><a href="#" onclick="command('spc/modem', 'GET')">Modem Info</a></li>
+      <li><a href="#" onclick="command('spc/ethernet', 'GET')">Ethernet Info</a></li>
+      <li><a href="#" onclick="command('spc/user', 'GET')">Users Info</a></li>
+    </ul>
+  </li>
+  <li>Status
+    <ul>
+      <li><a href="#" onclick="command('spc/area', 'GET')">Area Status</a></li>
+      <li><a href="#" onclick="command('spc/xbusnode', 'GET')">X-BUS Node</a></li>
+      <li><a href="#" onclick="command('spc/xbusmap', 'GET')">X-BUS Map</a></li>
+      <li><a href="#" onclick="command('spc/zone', 'GET')">Zone Status</a></li>
+      <li><a href="#" onclick="command('spc/door', 'GET')">Door Status</a></li>
+      <li><a href="#" onclick="command('spc/vzone', 'GET')">Verification Zone Status</a></li>
+      <li><a href="#" onclick="command('spc/output', 'GET')">Output Status</a></li>
+      <li><a href="#" onclick="command('spc/image/1', 'GET')">Get Live Image</a></li>
+      <li><a href="#" onclick="command('spc/image/1/1', 'GET')">Get Saved Image</a></li>
+    </ul>
+  </li>
+  <li>Logs
+    <ul>
+      <li><a href="#" onclick="command('spc/systemlog', 'GET')">System Log</a></li>
+      <li><a href="#" onclick="command('spc/accesslog', 'GET')">Access Log</a></li>
+      <li>Zone Log
+        <ul>
+              <li><a href="#" onclick="command('spc/zonelog/1','GET')">Zone 1</a></li>
+              <li><a href="#" onclick="command('spc/zonelog/2','GET')">Zone 2</a></li>
+              <li><a href="#" onclick="command('spc/zonelog/3','GET')">Zone 3</a></li>
+              <li><a href="#" onclick="command('spc/zonelog/4','GET')">Zone 4</a></li>
+              <li><a href="#" onclick="command('spc/zonelog/5','GET')">Zone 5</a></li>
+              <li><a href="#" onclick="command('spc/zonelog/6','GET')">Zone 6</a></li>
+              <li><a href="#" onclick="command('spc/zonelog/7','GET')">Zone 7</a></li>
+              <li><a href="#" onclick="command('spc/zonelog/8','GET')">Zone 8</a></li>
+        </ul>
+      </li>
+      <li><a href="#" onclick="command('spc/wirelesslog', 'GET')">Wireless Log</a></li>
+    </ul>
+  </li>
+  <li>Commands
+    <ul>
+      <li><a href="#">Area</a>
+        <ul>
+          <li>Area 1
+            <ul>
+              <li><a href="#" onclick="command('spc/area/1/set', 'PUT')">Set</a></li>
+              <li><a href="#" onclick="command('spc/area/1/set_a', 'PUT')">Partset A</a></li>
+              <li><a href="#" onclick="command('spc/area/1/set_b', 'PUT')">Partset B</a></li>
+              <li><a href="#" onclick="command('spc/area/1/unset', 'PUT')"> Unset</a></li>
+            </ul>
+          </li>
+          <li>Area 2
+            <ul>
+              <li><a href="#" onclick="command('spc/area/2/set', 'PUT')">Set</a></li>
+              <li><a href="#" onclick="command('spc/area/2/set_a', 'PUT')">Partset A</a></li>
+              <li><a href="#" onclick="command('spc/area/2/set_b', 'PUT')">Partset B</a></li>
+              <li><a href="#" onclick="command('spc/area/2/unset', 'PUT')"> Unset</a></li>
+            </ul>
+          </li>
+          <li>Area 3
+            <ul>
+              <li><a href="#" onclick="command('spc/area/3/set', 'PUT')">Set</a></li>
+              <li><a href="#" onclick="command('spc/area/3/set_a', 'PUT')">Partset A</a></li>
+              <li><a href="#" onclick="command('spc/area/3/set_b', 'PUT')">Partset B</a></li>
+              <li><a href="#" onclick="command('spc/area/3/unset', 'PUT')"> Unset</a></li>
+            </ul>
+          </li>
+          <li>Area 4
+            <ul>
+              <li><a href="#" onclick="command('spc/area/4/set', 'PUT')">Set</a></li>
+              <li><a href="#" onclick="command('spc/area/4/set_a', 'PUT')">Partset A</a></li>
+              <li><a href="#" onclick="command('spc/area/4/set_b', 'PUT')">Partset B</a></li>
+              <li><a href="#" onclick="command('spc/area/4/unset', 'PUT')"> Unset</a></li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+      <li><a href="#">Zone</a>
+        <ul>
+          <li>Zone 1
+            <ul>
+              <li><a href="#" onclick="command('spc/zone/1/inhibit','PUT')">Inhibit</a></li>
+              <li><a href="#" onclick="command('spc/zone/1/deinhibit','PUT')">Deinhibit</a></li>
+              <li><a href="#" onclick="command('spc/zone/1/isolate','PUT')">Isolate</a></li>
+              <li><a href="#" onclick="command('spc/zone/1/deisolate','PUT')">Deisolate</a></li>
+            </ul>
+          </li>
+          <li>Zone 2
+            <ul>
+              <li><a href="#" onclick="command('spc/zone/2/inhibit','PUT')">Inhibit</a></li>
+              <li><a href="#" onclick="command('spc/zone/2/deinhibit','PUT')">Deinhibit</a></li>
+              <li><a href="#" onclick="command('spc/zone/2/isolate','PUT')">Isolate</a></li>
+              <li><a href="#" onclick="command('spc/zone/2/deisolate','PUT')">Deisolate</a></li>
+            </ul>
+          </li>
+          <li>Zone 3
+            <ul>
+              <li><a href="#" onclick="command('spc/zone/3/inhibit','PUT')">Inhibit</a></li>
+              <li><a href="#" onclick="command('spc/zone/3/deinhibit','PUT')">Deinhibit</a></li>
+              <li><a href="#" onclick="command('spc/zone/3/isolate','PUT')">Isolate</a></li>
+              <li><a href="#" onclick="command('spc/zone/3/deisolate','PUT')">Deisolate</a></li>
+            </ul>
+          </li>
+          <li>Zone 4
+            <ul>
+              <li><a href="#" onclick="command('spc/zone/4/inhibit','PUT')">Inhibit</a></li>
+              <li><a href="#" onclick="command('spc/zone/4/deinhibit','PUT')">Deinhibit</a></li>
+              <li><a href="#" onclick="command('spc/zone/4/isolate','PUT')">Isolate</a></li>
+              <li><a href="#" onclick="command('spc/zone/4/deisolate','PUT')">Deisolate</a></li>
+            </ul>
+          </li>
+          <li>Zone 5
+            <ul>
+              <li><a href="#" onclick="command('spc/zone/5/inhibit','PUT')">Inhibit</a></li>
+              <li><a href="#" onclick="command('spc/zone/5/deinhibit','PUT')">Deinhibit</a></li>
+              <li><a href="#" onclick="command('spc/zone/5/isolate','PUT')">Isolate</a></li>
+              <li><a href="#" onclick="command('spc/zone/5/deisolate','PUT')">Deisolate</a></li>
+            </ul>
+          </li>
+          <li>Zone 6
+            <ul>
+              <li><a href="#" onclick="command('spc/zone/6/inhibit','PUT')">Inhibit</a></li>
+              <li><a href="#" onclick="command('spc/zone/6/deinhibit','PUT')">Deinhibit</a></li>
+              <li><a href="#" onclick="command('spc/zone/6/isolate','PUT')">Isolate</a></li>
+              <li><a href="#" onclick="command('spc/zone/6/deisolate','PUT')">Deisolate</a></li>
+            </ul>
+          </li>
+          <li>Zone 7
+            <ul>
+              <li><a href="#" onclick="command('spc/zone/7/inhibit','PUT')">Inhibit</a></li>
+              <li><a href="#" onclick="command('spc/zone/7/deinhibit','PUT')">Deinhibit</a></li>
+              <li><a href="#" onclick="command('spc/zone/7/isolate','PUT')">Isolate</a></li>
+              <li><a href="#" onclick="command('spc/zone/7/deisolate','PUT')">Deisolate</a></li>
+            </ul>
+          </li>
+          <li>Zone 8
+            <ul>
+              <li><a href="#" onclick="command('spc/zone/8/inhibit','PUT')">Inhibit</a></li>
+              <li><a href="#" onclick="command('spc/zone/8/deinhibit','PUT')">Deinhibit</a></li>
+              <li><a href="#" onclick="command('spc/zone/8/isolate','PUT')">Isolate</a></li>
+              <li><a href="#" onclick="command('spc/zone/8/deisolate','PUT')">Deisolate</a></li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+      <li><a href="#">Output</a>
+        <ul>
+          <li>Output 1
+            <ul>
+              <li><a href="#" onclick="command('spc/output/1/set','PUT')">Set</a></li>
+              <li><a href="#" onclick="command('spc/output/1/reset','PUT')">Reset</a></li>
+            </ul>
+          </li>
+          <li>Output 2
+            <ul>
+              <li><a href="#" onclick="command('spc/output/2/set','PUT')">Output 2 Set</a></li>
+              <li><a href="#" onclick="command('spc/output/2/reset','PUT')">Output 2 Reset</a></li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+      <li><a href="#" onclick="command('spc/bell/silence','PUT')">Silence All Bells</a></li>
+      <li><a href="#" onclick="command('spc/alert/restore','PUT')">Restore All Alerts</a></li>
+    </ul>
+  </li>
+</ul>
+
+<br>
+<h4>Request/Command to SPC</h4>
+<textarea readonly rows="2" cols="100" id="command_text_area">
+</textarea>
+
+<h4>Reply from SPC (JSON)</h4>
+<textarea readonly rows="10" cols="100" id="json_text_area">
+</textarea>
+
+<h4>Image</h4>
+<div class="button_container">
+    <div>
+        <button id="image_live_button" onclick="toggleLiveImage(this)">Start streaming liveimages (VZONE 1)</button>
+        <button id="image_saved_button" onclick="getSavedImage()">Get saved image sequence (VZONE 1)</button>
+        <text id="sequence_number" cols="10"></text>
+    </div>
+</div>
+<p/>
+<img src="" id="image_area">
+
+<h4>Websocket</h4>
+
+<div>
+    <label for="ws_encrypt_flag">Encrypted communication:</label>
+    <input id="ws_encrypt_flag" name="ws_encrypt_flag" type="checkbox" checked="checked" />
+</div>
+
+<div>
+    <label for="ws_username">Username:</label>
+    <input id="ws_username" name="ws_username" type="text" />
+</div>
+
+<div>
+    <label for="ws_password">Password:</label>
+    <input id="ws_password" name="ws_password" type="password" />
+</div>
+
+<p/>
+<div class="button_container">
+    <div>
+        <button id="connect_button" onclick="toggleConnection(this)">Connect</button>
+    </div>
+</div>
+<p/>
+
+<textarea readonly rows="2" cols="100" id="websocket_area">
+</textarea>
+
+
+</body>
+</html>
