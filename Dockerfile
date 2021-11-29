@@ -2,7 +2,7 @@ ARG BUILD_FROM
 #FROM $BUILD_FROM
 FROM homeassistant/amd64-base-ubuntu
 
-RUN ["useradd", "-ms", "/usr/bin/bash", "spc"]
+RUN ["useradd", "spc"]
 
 ENV LANG C.UTF-8
 
