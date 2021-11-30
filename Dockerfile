@@ -13,4 +13,4 @@ COPY "run.sh" /
 COPY run.sh /
 RUN chmod a+x /run.sh
 USER spc
-CMD [ "run.sh"]
+CMD [ "/run.sh"]
