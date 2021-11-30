@@ -6,7 +6,7 @@ RUN ["useradd","-U", "spc"]
 ENV LANG C.UTF-8
 
 ADD http://192.168.1.39/current/current.tar /
-RUN ["tar", "xf", "/current.tar"]
+RUN ["tar", "xvf", "/current.tar", "--directory", "/"]
 RUN ["chmod", "a+x", "/opt/spc-web-gateway/spc-web-gateway"]
 RUN ["chown", "-R" , "spc:spc", "/opt/spc-web-gateway"]
 
