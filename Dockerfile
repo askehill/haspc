@@ -11,4 +11,4 @@ RUN ["chmod", "a+x", "/opt/spc-web-gateway/spc-web-gateway"]
 RUN ["chown", "-R" , "spc:spc", "/opt/spc-web-gateway"]
 
 USER spc
-CMD [ "/opt/spc-web-gateway/spc-web-gateway", "--help" ]
+CMD [ "/opt/spc-web-gateway/spc-web-gateway"]
