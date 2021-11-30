@@ -1,3 +1,3 @@
 #!/usr/bin/with-contenv bashio
-
-echo Hello world!
+cd /opt/spc-web-gateway
+/opt/spc-web-gateway
