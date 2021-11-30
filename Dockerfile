@@ -9,6 +9,8 @@ ADD http://192.168.1.39/current/current.tar /
 RUN ["tar", "xvf", "/current.tar", "--directory", "/"]
 RUN ["chmod", "a+x", "/opt/spc-web-gateway/spc-web-gateway"]
 RUN ["chown", "-R" , "spc:spc", "/opt/spc-web-gateway"]
-
+COPY "run.sh" /
+COPY run.sh /
+RUN chmod a+x /run.sh
 USER spc
-CMD [ "/opt/spc-web-gateway/spc-web-gateway"]
+CMD [ "run.sh"]
