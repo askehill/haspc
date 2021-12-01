@@ -4,7 +4,7 @@
   "slug": "spc_gateway",
   "description": "This addon runs the SPC Gateway service from Lundix IT as an Addon in Home Assistant.",
   "arch": [ "armv7"],
-  "startup": "application",
+  "startup": "services",
   "boot": "auto",
   "options": {},
   "schema": {},
